@@ -1,0 +1,33 @@
+[
+  {
+    "id": "promo-1",
+    "title": "Scenic Europe Alpine & Heritage",
+    "subtitle": "Austria • Germany • Belgium",
+    "badge": "OUTBOUND SERIES",
+    "durationOrPrice": "10D7N All-In Package",
+    "description": "Experience the fairy-tale alpine village of Hallstatt, Imperial Vienna's Schönbrunn Palace, Cologne Cathedral, and Brussels with full visa assistance and a BNSP-certified DJW tour leader.",
+    "imageUrl": "/uploads/promos/promo-europe-winter.jpg",
+    "createdAt": "2026-10-25T10:00:00.000Z"
+  },
+  {
+    "id": "promo-2",
+    "title": "Japan Golden Route & Mt. Fuji",
+    "subtitle": "Tokyo • Mt. Fuji • Kyoto • Osaka",
+    "badge": "OPEN TRIP PROMO",
+    "durationOrPrice": "7D5N Best Value",
+    "description": "Journey through Japan's iconic highlights including Mount Fuji 5th Station, traditional kimono strolling in Kyoto, bullet train experience, and vibrant Osaka culinary tours.",
+    "imageUrl": "/uploads/promos/promo-japan-fuji.jpg",
+    "createdAt": "2026-10-25T10:05:00.000Z"
+  },
+  {
+    "id": "promo-3",
+    "title": "Wonderful Bali & Nusa Islands Escape",
+    "subtitle": "Bali • Lombok • Labuan Bajo",
+    "badge": "INBOUND & INCENTIVE",
+    "durationOrPrice": "4D3N / Custom Trip",
+    "description": "Tailor-made domestic private tours and corporate incentive gatherings across Bali and Indonesia's finest islands, complete with curated resorts, transport, and exclusive DJW merchandise.",
+    "imageUrl": "/uploads/promos/promo-bali-nusapenida.jpg",
+    "createdAt": "2026-10-25T10:10:00.000Z"
+  }
+]
+

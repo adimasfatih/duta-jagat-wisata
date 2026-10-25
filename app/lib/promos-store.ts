@@ -53,24 +53,61 @@ const PROTECTED_SAMPLE_FILES = new Set([
 ]);
 
 /**
- * Checks whether Vercel Blob cloud storage is configured.
- * When you connect a Blob store in your Vercel Dashboard (Storage -> Create Blob Store),
- * Vercel automatically injects BLOB_READ_WRITE_TOKEN.
+ * Finds the Vercel Blob read-write token or store ID regardless of whether
+ * Vercel used the default BLOB_READ_WRITE_TOKEN name or a custom prefix
+ * (e.g., DUTA_JAGAT_WISATA_BLOB_READ_WRITE_TOKEN).
  */
+export function resolveBlobCredentials(): {
+  token?: string;
+  storeId?: string;
+  configured: boolean;
+} {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return {
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      configured: true,
+    };
+  }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value) continue;
+    if (
+      value.startsWith("vercel_blob_rw_") ||
+      key.endsWith("_READ_WRITE_TOKEN")
+    ) {
+      return { token: value, configured: true };
+    }
+  }
+
+  if (process.env.BLOB_STORE_ID) {
+    return { storeId: process.env.BLOB_STORE_ID, configured: true };
+  }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value) continue;
+    if (key.endsWith("_STORE_ID") && value.startsWith("store_")) {
+      return { storeId: value, configured: true };
+    }
+  }
+
+  return { configured: false };
+}
+
 export function isVercelBlobConfigured(): boolean {
-  return Boolean(
-    process.env.BLOB_READ_WRITE_TOKEN ||
-      (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN)
-  );
+  return resolveBlobCredentials().configured;
 }
 
 export async function readPromos(): Promise<PromoItem[]> {
+  const creds = resolveBlobCredentials();
+
   // 1. If Vercel Blob is connected, read the live promos list from Vercel Blob origin storage
-  if (isVercelBlobConfigured()) {
+  if (creds.configured) {
     try {
       const result = await get(BLOB_DB_PATHNAME, {
         access: "public",
         useCache: false,
+        ...(creds.token ? { token: creds.token } : {}),
+        ...(creds.storeId ? { storeId: creds.storeId } : {}),
       });
       if (result && result.statusCode === 200 && result.stream) {
         const text = await new Response(result.stream).text();
@@ -108,15 +145,18 @@ export async function readPromos(): Promise<PromoItem[]> {
 
 export async function writePromos(promos: PromoItem[]): Promise<void> {
   const payload = JSON.stringify(promos, null, 2);
+  const creds = resolveBlobCredentials();
 
   // 1. Save permanently to Vercel Blob when configured
-  if (isVercelBlobConfigured()) {
+  if (creds.configured) {
     await put(BLOB_DB_PATHNAME, payload, {
       access: "public",
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: "application/json",
       cacheControlMaxAge: 0,
+      ...(creds.token ? { token: creds.token } : {}),
+      ...(creds.storeId ? { storeId: creds.storeId } : {}),
     });
     return;
   }
@@ -137,13 +177,16 @@ export async function saveUploadedPromoImage(file: File): Promise<string> {
     .replace(/[^a-zA-Z0-9_-]/g, "-")
     .slice(0, 40);
   const fileName = `${Date.now()}-${safeBase || "promo"}${ext}`;
+  const creds = resolveBlobCredentials();
 
   // 1. Upload directly to Vercel Blob CDN when configured (works permanently from phone on live website!)
-  if (isVercelBlobConfigured()) {
+  if (creds.configured) {
     const blob = await put(`promos/images/${fileName}`, file, {
       access: "public",
       addRandomSuffix: true,
       contentType: file.type || "image/jpeg",
+      ...(creds.token ? { token: creds.token } : {}),
+      ...(creds.storeId ? { storeId: creds.storeId } : {}),
     });
     return blob.url;
   }
@@ -169,16 +212,21 @@ export async function deletePromoById(id: string): Promise<PromoItem[]> {
   const remaining = promos.filter((p) => p.id !== id);
   await writePromos(remaining);
 
+  const creds = resolveBlobCredentials();
+
   // Clean up Vercel Blob image if it was uploaded to Blob storage
   if (
     target?.imageUrl &&
     target.imageUrl.includes(".blob.vercel-storage.com/") &&
-    isVercelBlobConfigured()
+    creds.configured
   ) {
     const stillUsed = remaining.some((p) => p.imageUrl === target.imageUrl);
     if (!stillUsed) {
       try {
-        await del(target.imageUrl);
+        await del(target.imageUrl, {
+          ...(creds.token ? { token: creds.token } : {}),
+          ...(creds.storeId ? { storeId: creds.storeId } : {}),
+        });
       } catch (err) {
         console.error("Failed to delete blob image:", err);
       }
